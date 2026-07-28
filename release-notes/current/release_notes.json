@@ -52,5 +52,19 @@
     "summary": [],
     "published": false,
     "release": null
+  },
+  {
+    "app": "settings",
+    "pr": 5,
+    "title": "added assistants for ivr menu",
+    "description": "",
+    "author": "bilal-dataphone",
+    "mergedAt": "2026-07-28T17:06:10Z",
+    "labels": [
+      "feature"
+    ],
+    "summary": [],
+    "published": false,
+    "release": null
   }
 ]
