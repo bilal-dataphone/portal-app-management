@@ -1,0 +1,101 @@
+name: Update Release Notes
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+
+jobs:
+  update-release-notes:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    env:
+      APP: settings
+      RELEASE_NOTES_DIR: release-notes/current
+      RELEASE_NOTES_FILE: release_notes.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure release notes file exists
+        run: |
+          mkdir -p "$RELEASE_NOTES_DIR"
+
+          if [ ! -f "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE" ]; then
+            echo "[]" > "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
+          fi
+
+      - name: Create or update release note
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_MERGED_AT: ${{ github.event.pull_request.merged_at }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          FILE="$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
+
+          LABELS=$(echo "$PR_LABELS" | jq '[.[].name]')
+
+          jq \
+            --arg app "$APP" \
+            --argjson pr "$PR_NUMBER" \
+            --arg title "$PR_TITLE" \
+            --arg body "$PR_BODY" \
+            --arg author "$PR_AUTHOR" \
+            --arg mergedAt "$PR_MERGED_AT" \
+            --argjson labels "$LABELS" \
+            '
+            if any(.[]; .pr == $pr) then
+              map(
+                if .pr == $pr then
+                  .app = $app
+                  | .title = $title
+                  | .description = $body
+                  | .author = $author
+                  | .mergedAt = $mergedAt
+                  | .labels = $labels
+                else
+                  .
+                end
+              )
+            else
+              . + [{
+                app: $app,
+                pr: $pr,
+                title: $title,
+                description: $body,
+                author: $author,
+                mergedAt: $mergedAt,
+                labels: $labels,
+                summary: null,
+                published: false,
+                release: null
+              }]
+            end
+            ' "$FILE" > "$RELEASE_NOTES_DIR/tmp.json"
+
+          mv "$RELEASE_NOTES_DIR/tmp.json" "$FILE"
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(release-notes): update PR #${{ github.event.pull_request.number }}"
+          git push
