@@ -1,0 +1,14 @@
+[
+  {
+    "app": "settings",
+    "pr": 1,
+    "title": "Added ivr assistant",
+    "description": "Users can now create ivr assistants",
+    "author": "bilal-dataphone",
+    "mergedAt": "2026-07-28T11:46:50Z",
+    "labels": [],
+    "summary": null,
+    "published": false,
+    "release": null
+  }
+]
