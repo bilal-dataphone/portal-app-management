@@ -86,5 +86,31 @@
     ],
     "published": false,
     "release": null
+  },
+  {
+    "app": "settings",
+    "pr": 7,
+    "title": "Added analytics page for reports",
+    "description": "Fix: Enabling an assistant now disables any other active ones",
+    "author": "bilal-dataphone",
+    "mergedAt": "2026-07-28T17:47:07Z",
+    "labels": [
+      "bug",
+      "feature"
+    ],
+    "summary": [
+      {
+        "label": "feature",
+        "title": "Analytics Dashboard",
+        "description": "Monitor call activity, answer rates, and assistant performance metrics using a new date-filtered dashboard."
+      },
+      {
+        "label": "bug_fix",
+        "title": "IVR Assistant Activation",
+        "description": "Enabling an assistant now automatically disables other active assistants to prevent duplicate call routing."
+      }
+    ],
+    "published": false,
+    "release": null
   }
 ]

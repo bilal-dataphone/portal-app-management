@@ -1,20 +1,25 @@
-===== 2026-07-28T17:15:05Z PR #6 =====
+===== 2026-07-28T17:47:18Z PR #7 =====
 SUMMARY_API=https://mummified-reviving-preschool.ngrok-free.dev/api/release-notes/generate-summary
 APP=settings
 Request payload (patches redacted):
 {
   "app": "settings",
   "pr": {
-    "number": 6,
-    "title": "added ivr assistant",
-    "description": "",
+    "number": 7,
+    "title": "Added analytics page for reports",
+    "description": "Fix: Enabling an assistant now disables any other active ones",
     "author": "bilal-dataphone",
-    "mergedAt": "2026-07-28T17:14:53Z",
+    "mergedAt": "2026-07-28T17:47:07Z",
     "labels": [
+      "bug",
       "feature"
     ]
   },
   "files": [
+    {
+      "path": "analytics-page.tsx",
+      "patch": "(patch omitted)"
+    },
     {
       "path": "ivr-assistants.tsx",
       "patch": "(patch omitted)"
@@ -24,5 +29,5 @@ Request payload (patches redacted):
 curl_exit=0
 http_code=200
 Response body:
-{"summary":[{"label":"feature","title":"IVR Assistant","description":"Create and manage AI-powered IVR assistants to automate incoming customer calls."}]}
+{"summary":[{"label":"feature","title":"Analytics Dashboard","description":"Monitor call activity, answer rates, and assistant performance metrics using a new date-filtered dashboard."},{"label":"bug_fix","title":"IVR Assistant Activation","description":"Enabling an assistant now automatically disables other active assistants to prevent duplicate call routing."}]}
 Summary generated successfully.
