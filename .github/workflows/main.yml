@@ -29,7 +29,6 @@ jobs:
       - name: Ensure release notes file exists
         run: |
           mkdir -p "$RELEASE_NOTES_DIR"
-
           if [ ! -f "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE" ]; then
             echo "[]" > "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
           fi
@@ -52,8 +51,18 @@ jobs:
           PR_MERGED_AT: ${{ github.event.pull_request.merged_at }}
           PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
         run: |
+          set +e
+
+          LOG_FILE="$RELEASE_NOTES_DIR/ai-summary.log"
+          {
+            echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) PR #$PR_NUMBER ====="
+            echo "SUMMARY_API=$SUMMARY_API"
+            echo "APP=$APP"
+          } > "$LOG_FILE"
+
           LABELS=$(echo "$PR_LABELS" | jq '[.[].name]')
 
+          # GitHub PR files API uses `filename`, not `path`
           jq -n \
             --arg app "$APP" \
             --argjson number "$PR_NUMBER" \
@@ -74,32 +83,62 @@ jobs:
                 labels: $labels
               },
               files: ($files[0] | map({
-                path,
-                patch
+                path: .filename,
+                patch: (.patch // null)
               }))
             }' > request.json
 
-          if curl \
+          {
+            echo "Request payload (patches redacted):"
+            jq '{
+              app,
+              pr,
+              files: [.files[] | {
+                path,
+                patch: (if .patch == null then null else "(patch omitted)" end)
+              }]
+            }' request.json
+          } | tee -a "$LOG_FILE"
+
+          HTTP_CODE=$(curl \
             --silent \
             --show-error \
-            --fail \
+            --output summary-response.json \
+            --write-out "%{http_code}" \
             -X POST \
             "$SUMMARY_API" \
             -H "Content-Type: application/json" \
             -H "ngrok-skip-browser-warning: true" \
-            --data @request.json \
-            > summary-response.json; then
+            --data @request.json)
 
+          CURL_EXIT=$?
+
+          {
+            echo "curl_exit=$CURL_EXIT"
+            echo "http_code=$HTTP_CODE"
+            echo "Response body:"
+            if [ -f summary-response.json ]; then
+              cat summary-response.json
+            else
+              echo "(no response body)"
+            fi
+            echo
+          } | tee -a "$LOG_FILE"
+
+          if [ "$CURL_EXIT" -eq 0 ] && [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
             if jq -e '.summary' summary-response.json >/dev/null 2>&1; then
               jq '.summary' summary-response.json > summary.json
+              echo "Summary generated successfully." | tee -a "$LOG_FILE"
             else
               echo "[]" > summary.json
+              echo "WARN: response missing .summary — using []" | tee -a "$LOG_FILE"
             fi
-
           else
-            echo "AI summary generation failed. Continuing..."
             echo "[]" > summary.json
+            echo "AI summary generation failed. Continuing with summary=[]." | tee -a "$LOG_FILE"
           fi
+
+          exit 0
 
       - name: Create or update release note
         env:
@@ -111,7 +150,6 @@ jobs:
           PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
         run: |
           FILE="$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
-
           LABELS=$(echo "$PR_LABELS" | jq '[.[].name]')
           SUMMARY=$(cat summary.json)
 
@@ -162,7 +200,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
+          git add \
+            "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE" \
+            "$RELEASE_NOTES_DIR/ai-summary.log"
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
