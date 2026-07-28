@@ -1,15 +1,15 @@
-===== 2026-07-28T17:06:26Z PR #5 =====
+===== 2026-07-28T17:15:05Z PR #6 =====
 SUMMARY_API=https://mummified-reviving-preschool.ngrok-free.dev/api/release-notes/generate-summary
 APP=settings
 Request payload (patches redacted):
 {
   "app": "settings",
   "pr": {
-    "number": 5,
-    "title": "added assistants for ivr menu",
+    "number": 6,
+    "title": "added ivr assistant",
     "description": "",
     "author": "bilal-dataphone",
-    "mergedAt": "2026-07-28T17:06:10Z",
+    "mergedAt": "2026-07-28T17:14:53Z",
     "labels": [
       "feature"
     ]
@@ -24,5 +24,5 @@ Request payload (patches redacted):
 curl_exit=0
 http_code=200
 Response body:
-{"summary":[]}
+{"summary":[{"label":"feature","title":"IVR Assistant","description":"Create and manage AI-powered IVR assistants to automate incoming customer calls."}]}
 Summary generated successfully.

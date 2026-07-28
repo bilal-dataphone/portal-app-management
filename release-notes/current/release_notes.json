@@ -66,5 +66,25 @@
     "summary": [],
     "published": false,
     "release": null
+  },
+  {
+    "app": "settings",
+    "pr": 6,
+    "title": "added ivr assistant",
+    "description": "",
+    "author": "bilal-dataphone",
+    "mergedAt": "2026-07-28T17:14:53Z",
+    "labels": [
+      "feature"
+    ],
+    "summary": [
+      {
+        "label": "feature",
+        "title": "IVR Assistant",
+        "description": "Create and manage AI-powered IVR assistants to automate incoming customer calls."
+      }
+    ],
+    "published": false,
+    "release": null
   }
 ]
