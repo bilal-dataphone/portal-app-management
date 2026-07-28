@@ -6,7 +6,7 @@
     "description": "Users can now create ivr assistants",
     "author": "bilal-dataphone",
     "mergedAt": "2026-07-28T11:46:50Z",
-    "labels": [],
+    "labels": ["feature"],
     "summary": null,
     "published": false,
     "release": null
