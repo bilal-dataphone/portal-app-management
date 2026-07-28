@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   update-release-notes:
@@ -17,6 +18,7 @@ jobs:
       APP: settings
       RELEASE_NOTES_DIR: release-notes/current
       RELEASE_NOTES_FILE: release_notes.json
+      SUMMARY_API: https://mummified-reviving-preschool.ngrok-free.dev/api/release-notes/generate-summary
 
     steps:
       - name: Checkout repository
@@ -32,6 +34,73 @@ jobs:
             echo "[]" > "$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
           fi
 
+      - name: Fetch PR files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api \
+            repos/${{ github.repository }}/pulls/$PR_NUMBER/files \
+            > files.json
+
+      - name: Generate AI summary
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_MERGED_AT: ${{ github.event.pull_request.merged_at }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          LABELS=$(echo "$PR_LABELS" | jq '[.[].name]')
+
+          jq -n \
+            --arg app "$APP" \
+            --argjson number "$PR_NUMBER" \
+            --arg title "$PR_TITLE" \
+            --arg description "$PR_BODY" \
+            --arg author "$PR_AUTHOR" \
+            --arg mergedAt "$PR_MERGED_AT" \
+            --argjson labels "$LABELS" \
+            --slurpfile files files.json \
+            '{
+              app: $app,
+              pr: {
+                number: $number,
+                title: $title,
+                description: $description,
+                author: $author,
+                mergedAt: $mergedAt,
+                labels: $labels
+              },
+              files: ($files[0] | map({
+                path,
+                patch
+              }))
+            }' > request.json
+
+          if curl \
+            --silent \
+            --show-error \
+            --fail \
+            -X POST \
+            "$SUMMARY_API" \
+            -H "Content-Type: application/json" \
+            -H "ngrok-skip-browser-warning: true" \
+            --data @request.json \
+            > summary-response.json; then
+
+            if jq -e '.summary' summary-response.json >/dev/null 2>&1; then
+              jq '.summary' summary-response.json > summary.json
+            else
+              echo "[]" > summary.json
+            fi
+
+          else
+            echo "AI summary generation failed. Continuing..."
+            echo "[]" > summary.json
+          fi
+
       - name: Create or update release note
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -44,6 +113,7 @@ jobs:
           FILE="$RELEASE_NOTES_DIR/$RELEASE_NOTES_FILE"
 
           LABELS=$(echo "$PR_LABELS" | jq '[.[].name]')
+          SUMMARY=$(cat summary.json)
 
           jq \
             --arg app "$APP" \
@@ -53,6 +123,7 @@ jobs:
             --arg author "$PR_AUTHOR" \
             --arg mergedAt "$PR_MERGED_AT" \
             --argjson labels "$LABELS" \
+            --argjson summary "$SUMMARY" \
             '
             if any(.[]; .pr == $pr) then
               map(
@@ -63,6 +134,7 @@ jobs:
                   | .author = $author
                   | .mergedAt = $mergedAt
                   | .labels = $labels
+                  | .summary = $summary
                 else
                   .
                 end
@@ -76,7 +148,7 @@ jobs:
                 author: $author,
                 mergedAt: $mergedAt,
                 labels: $labels,
-                summary: null,
+                summary: $summary,
                 published: false,
                 release: null
               }]
