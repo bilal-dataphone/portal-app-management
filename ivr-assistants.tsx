@@ -185,6 +185,7 @@ export default function IVRAssistantPage() {
             assistant has been created.
           </Text>
         </Space>
+        
       </Modal>
     </div>
   );
