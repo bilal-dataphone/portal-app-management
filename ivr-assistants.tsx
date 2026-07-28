@@ -13,6 +13,7 @@ import {
   Typography,
   Popconfirm,
   Switch,
+  message,
 } from "antd";
 
 import {
@@ -45,8 +46,15 @@ export default function IVRAssistantPage() {
   }
 
   async function handleCreateAssistant() {
+    const name = assistantName.trim();
+
+    if (!name) {
+      message.error("Assistant name is required");
+      return;
+    }
+
     await createAssistant({
-      name: assistantName,
+      name,
       voice: "Rachel",
       language: "en",
       model: "gpt-4o",
@@ -64,7 +72,20 @@ export default function IVRAssistantPage() {
     loadAssistants();
   }
 
+  // Only one assistant may answer inbound calls at a time. Enabling a second
+  // active assistant previously left both enabled, which could double-route
+  // or drop live customer calls.
   async function handleToggle(id: string, enabled: boolean) {
+    if (enabled) {
+      const otherActive = assistants.filter(
+        (assistant) => assistant.enabled && assistant.id !== id
+      );
+
+      for (const assistant of otherActive) {
+        await toggleAssistant(assistant.id, false);
+      }
+    }
+
     await toggleAssistant(id, enabled);
 
     loadAssistants();
@@ -84,6 +105,7 @@ export default function IVRAssistantPage() {
 
           <Text type="secondary">
             Create and manage AI assistants that answer incoming customer calls.
+            Only one assistant can be active at a time.
           </Text>
         </div>
 
@@ -126,7 +148,7 @@ export default function IVRAssistantPage() {
                 title: "Status",
                 render: (_, record) => (
                   <Tag color={record.enabled ? "green" : "default"}>
-                    {record.enabled ? "Active" : "Disabled"}
+                    {record.enabled ? "Active — answering calls" : "Disabled"}
                   </Tag>
                 ),
               },
@@ -148,7 +170,11 @@ export default function IVRAssistantPage() {
                     <Button>Edit</Button>
 
                     <Popconfirm
-                      title="Delete assistant?"
+                      title={
+                        record.enabled
+                          ? "This assistant is answering live calls. Delete it anyway?"
+                          : "Delete assistant?"
+                      }
                       onConfirm={() => handleDelete(record.id)}
                     >
                       <Button danger>
@@ -166,9 +192,13 @@ export default function IVRAssistantPage() {
       <Modal
         title="Create IVR Assistant"
         open={createModalOpen}
-        onCancel={() => setCreateModalOpen(false)}
+        onCancel={() => {
+          setCreateModalOpen(false);
+          setAssistantName("");
+        }}
         onOk={handleCreateAssistant}
         okText="Create"
+        okButtonProps={{ disabled: !assistantName.trim() }}
       >
         <Space
           direction="vertical"
@@ -178,6 +208,7 @@ export default function IVRAssistantPage() {
             placeholder="Assistant name"
             value={assistantName}
             onChange={(e) => setAssistantName(e.target.value)}
+            onPressEnter={handleCreateAssistant}
           />
 
           <Text type="secondary">
@@ -185,7 +216,6 @@ export default function IVRAssistantPage() {
             assistant has been created.
           </Text>
         </Space>
-        
       </Modal>
     </div>
   );
